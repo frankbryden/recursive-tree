@@ -1,6 +1,6 @@
 let canvas = document.querySelector("#myCanvas")
 let ctx = canvas.getContext("2d")
-
+let childCount = 0
 
 /*
 Ideas:
@@ -27,12 +27,24 @@ class Tree {
     }
 
     spawnLevel(){
+        if (this.maxDepth == 6){
+            console.log("Reached max depth")
+            return
+        }
         this.root.propagateCall("SPAWN", this.maxDepth)
         this.maxDepth++
     }
 
     render(){
-        this.root.render()
+        this.root.propagateCall("RENDER", 0, this.maxDepth)
+        ctx.beginPath()
+        ctx.arc(this.x, this.y, 10, 0, 2*Math.PI)
+        ctx.fill()
+
+        ctx.beginPath()
+        ctx.arc(10, 10, 40, 0, 2*Math.PI)
+        ctx.fillStyle = "black"
+        ctx.fill()
     }
 }
 
@@ -50,12 +62,14 @@ class TreeNode {
     }
 
     initBranch() {
-        const x2 = this.x + Math.cos(angle) * length
-        const y2 = this.y + Math.sin(angle) * length
-        this.branch = new Branch(x, y, x2, y2)
+        const x2 = this.x + Math.cos(this.angle) * this.length
+        const y2 = this.y + Math.sin(this.angle) * this.length
+        //console.log(`x2 = ${this.x} + ${Math.cos(this.angle)} * ${} -> ${x2}`)
+        this.branch = new Branch(this.x, this.y, x2, y2)
     }
 
     spawnChildren() {
+        console.log(`Spawning children at depth ${this.step}`)
         this.children = []
         //angle calculations
         const angleFactor = Math.pow(this.treeParent.dividingAngleFactor, this.step)*this.treeParent.startAngle
@@ -68,14 +82,27 @@ class TreeNode {
         for (let i = 0; i < this.treeParent.childrenCount; i++) {
             const angle = startAngle + angleStep * i
             this.children.push(new TreeNode(this.branch.x2, this.branch.y2, length, angle, this.step+1, this.treeParent))
+            childCount++
+            console.log(`There are now ${childCount} children`)
         }
+        console.log(this.children)
     }
 
-    propagateCall(methodName, step) {
-        if (step == this.step) {
+    propagateCall(methodName, step, stepMax) {
+        let forMe = false
+        if (stepMax == undefined) {
+            if (step == this.step) {
+                forMe = true
+            }    
+        } else {
+            if (this.step >= step && this.step <= stepMax) {
+                forMe = true
+            }
+        }
+        if (forMe) {
             this.performCall(methodName)
         }
-        this.children.forEach(c => c.propagateCall(methodName, step))
+        this.children.forEach(c => c.propagateCall(methodName, step, stepMax))
     }
 
     performCall(methodName){
@@ -83,14 +110,18 @@ class TreeNode {
             case "SPAWN":
                 this.spawnChildren()
                 break
+            case "RENDER":
+                this.render()
+                break
             default:
                 console.error(`Unknown method ${methodName}`)
         }
     }
 
     render() {
-        for (let branch of this.children) {
-            branch.render()
+        for (let node of this.children) {
+            //alert("Here with branch.x = " + branch.x)
+            node.branch.render()
         }
     }
 }
@@ -109,17 +140,20 @@ class Branch {
         ctx.beginPath()
         ctx.moveTo(this.x, this.y)
         ctx.lineTo(this.x2, this.y2)
+        ctx.strokeStyle = "brown"
+        ctx.stroke()
     }
 }
 
-let tree = new Tree(300, 400, 100, 0.6, Math.PI/2, 0.5, 3)
+let tree = new Tree(300, 100, 100, 0.7, Math.PI, 0.6, 3)
 let count = 0
 
 function update() {
     count++
-    if (count > 1000) {
+    if (count > 3) {
         console.log("Step")
         tree.spawnLevel()
+        count = 0
     }
 }
 
@@ -129,8 +163,10 @@ function render() {
 }
 
 function mainLoop() {
-    requestAnimationFrame(mainLoop)
+    setTimeout(mainLoop, 100)
 
     update()
     render()
 }
+
+mainLoop()
