@@ -11,23 +11,31 @@ Ideas:
     - Write text, where the tree expands in such a way that writes a letter. Perform simultaneously to write a word or sentence.
 */
 
+//Utility functions
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min)) + min; //The maximum is exclusive and the minimum is inclusive
+}
+
 //Tree is the toplevel container. Responsible for managing the individual components, updating
 //and drawing
 class Tree {
     constructor(x, y, startLength, dividingLengthFactor, startAngle, dividingAngleFactor, childrenCount) {
         this.x = x
         this.y = y
+        this.rootBranch = new Branch(this.x, this.y, this.x+Math.cos(startAngle)*startLength, this.y+Math.sin(startAngle)*startLength)
         this.startLength = startLength
         this.dividingLengthFactor = dividingLengthFactor
         this.startAngle = startAngle
         this.dividingAngleFactor = dividingAngleFactor
         this.childrenCount = childrenCount
-        this.root = new TreeNode(this.x, this.y, this.startLength, this.startAngle, 2, this)
+        this.root = new TreeNode(this.x, this.y, this.startLength, this.startAngle, 2, childrenCount, this)
         this.maxDepth = 2
     }
 
     spawnLevel(){
-        if (this.maxDepth == 6){
+        if (this.maxDepth == 8){
             console.log("Reached max depth")
             return
         }
@@ -37,25 +45,25 @@ class Tree {
 
     render(){
         this.root.propagateCall("RENDER", 0, this.maxDepth)
+        this.rootBranch.render()
         ctx.beginPath()
-        ctx.arc(this.x, this.y, 10, 0, 2*Math.PI)
-        ctx.fill()
-
-        ctx.beginPath()
-        ctx.arc(10, 10, 40, 0, 2*Math.PI)
-        ctx.fillStyle = "black"
+        ctx.arc(this.x, this.y, 5, 0, 2*Math.PI)
         ctx.fill()
     }
 }
 
 //TreeNode is the recursive data structure.
 class TreeNode {
-    constructor(x, y, length, angle, step, treeParent) {
+    constructor(x, y, length, angle, step, branchFactor, treeParent) {
+        if (branchFactor < 2) {
+            alert("branch factor is " + branchFactor)
+        }
         this.x = x
         this.y = y
         this.length = length
         this.angle = angle
         this.step = step
+        this.branchFactor = branchFactor;
         this.initBranch()
         this.children = []
         this.treeParent = treeParent
@@ -69,23 +77,19 @@ class TreeNode {
     }
 
     spawnChildren() {
-        console.log(`Spawning children at depth ${this.step}`)
         this.children = []
         //angle calculations
-        const angleFactor = Math.pow(this.treeParent.dividingAngleFactor, this.step)*this.treeParent.startAngle
-        const angleSpan = angleFactor * 2*Math.PI
-        const angleStep = angleSpan/this.treeParent.childrenCount
+        const angleFactor = Math.pow(this.treeParent.dividingAngleFactor, this.step) * 2*Math.PI//this.treeParent.startAngle
+        const angleSpan = angleFactor// * 2*Math.PI
+        const angleStep = angleSpan/(this.branchFactor - 1)
         const startAngle = this.angle - angleSpan/2
 
         //length calculations
         const length = this.treeParent.startLength * Math.pow(this.treeParent.dividingLengthFactor, this.step)
-        for (let i = 0; i < this.treeParent.childrenCount; i++) {
+        for (let i = 0; i < this.branchFactor; i++) {
             const angle = startAngle + angleStep * i
-            this.children.push(new TreeNode(this.branch.x2, this.branch.y2, length, angle, this.step+1, this.treeParent))
-            childCount++
-            console.log(`There are now ${childCount} children`)
+            this.children.push(new TreeNode(this.branch.x2, this.branch.y2, length, angle, this.step+1, getRandomInt(this.treeParent.childrenCount - 1, this.treeParent.childrenCount + 2), this.treeParent))
         }
-        console.log(this.children)
     }
 
     propagateCall(methodName, step, stepMax) {
@@ -145,12 +149,12 @@ class Branch {
     }
 }
 
-let tree = new Tree(300, 100, 100, 0.7, Math.PI, 0.6, 3)
+let tree = new Tree(500, 500, 90, 0.9, 3*Math.PI/2, 0.55, 3)
 let count = 0
 
 function update() {
     count++
-    if (count > 3) {
+    if (count > 2) {
         console.log("Step")
         tree.spawnLevel()
         count = 0
@@ -163,7 +167,7 @@ function render() {
 }
 
 function mainLoop() {
-    setTimeout(mainLoop, 100)
+    setTimeout(mainLoop, 50)
 
     update()
     render()
