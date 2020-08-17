@@ -32,11 +32,15 @@ class Tree {
         this.childrenCount = childrenCount
         this.root = new TreeNode(this.x, this.y, this.startLength, this.startAngle, 2, childrenCount, this)
         this.maxDepth = 2
+        this.done = false
     }
 
     spawnLevel(){
-        if (this.maxDepth == 8){
-            console.log("Reached max depth")
+        if (this.done)
+            return
+        if (this.maxDepth == 7){
+            this.root.propagateCall("LEAVES", this.maxDepth)
+            this.done = true
             return
         }
         this.root.propagateCall("SPAWN", this.maxDepth)
@@ -46,18 +50,12 @@ class Tree {
     render(){
         this.root.propagateCall("RENDER", 0, this.maxDepth)
         this.rootBranch.render()
-        ctx.beginPath()
-        ctx.arc(this.x, this.y, 5, 0, 2*Math.PI)
-        ctx.fill()
     }
 }
 
 //TreeNode is the recursive data structure.
 class TreeNode {
     constructor(x, y, length, angle, step, branchFactor, treeParent) {
-        if (branchFactor < 2) {
-            alert("branch factor is " + branchFactor)
-        }
         this.x = x
         this.y = y
         this.length = length
@@ -88,8 +86,12 @@ class TreeNode {
         const length = this.treeParent.startLength * Math.pow(this.treeParent.dividingLengthFactor, this.step)
         for (let i = 0; i < this.branchFactor; i++) {
             const angle = startAngle + angleStep * i
-            this.children.push(new TreeNode(this.branch.x2, this.branch.y2, length, angle, this.step+1, getRandomInt(this.treeParent.childrenCount - 1, this.treeParent.childrenCount + 2), this.treeParent))
+            this.children.push(new TreeNode(this.branch.x2, this.branch.y2, length, angle, this.step+1, this.treeParent.childrenCount, this.treeParent))// getRandomInt(this.treeParent.childrenCount - 2, this.treeParent.childrenCount + 5), this.treeParent))
         }
+    }
+
+    spawnLeaves() {
+        this.branch.addLeaf()
     }
 
     propagateCall(methodName, step, stepMax) {
@@ -117,6 +119,9 @@ class TreeNode {
             case "RENDER":
                 this.render()
                 break
+            case "LEAVES":
+                this.spawnLeaves()
+                break
             default:
                 console.error(`Unknown method ${methodName}`)
         }
@@ -138,6 +143,13 @@ class Branch {
         this.y = y
         this.x2 = x2
         this.y2 = y2
+        this.leaf = null
+    }
+
+    addLeaf(){
+        this.leaf = new Leaf(this.x2, this.y2, getRandomInt(1, 7))
+        console.log("New leaf")
+        console.log(this.leaf)
     }
 
     render() {
@@ -146,16 +158,35 @@ class Branch {
         ctx.lineTo(this.x2, this.y2)
         ctx.strokeStyle = "brown"
         ctx.stroke()
+
+        if (this.leaf){
+            this.leaf.render()
+        }
     }
 }
 
-let tree = new Tree(500, 500, 90, 0.9, 3*Math.PI/2, 0.55, 3)
+class Leaf {
+    constructor(x, y, radius) {
+        this.x = x
+        this.y = y
+        this.radius = radius
+        this.color = "#5db50b"
+    }
+
+    render() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, 2*Math.PI)
+        ctx.fillStyle = this.color
+        ctx.fill()
+    }
+}
+
+let tree = new Tree(500, 500, 150, 0.75, 3*Math.PI/2, 0.6, 3)
 let count = 0
 
 function update() {
     count++
     if (count > 2) {
-        console.log("Step")
         tree.spawnLevel()
         count = 0
     }
@@ -167,7 +198,7 @@ function render() {
 }
 
 function mainLoop() {
-    setTimeout(mainLoop, 50)
+    setTimeout(mainLoop, 30)
 
     update()
     render()
